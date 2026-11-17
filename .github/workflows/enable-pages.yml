@@ -4,28 +4,27 @@ on:
     branches: [main]
   workflow_dispatch:
 permissions:
-  pages: write
   contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
 jobs:
-  enable:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Enable Pages from main / root
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          REPO="${{ github.repository }}"
-          if gh api "repos/${REPO}/pages" >/dev/null 2>&1; then
-            gh api --method PUT "repos/${REPO}/pages" \
-              -H "Accept: application/vnd.github+json" \
-              -f build_type=legacy \
-              -f "source[branch]=main" \
-              -f "source[path]=/"
-          else
-            gh api --method POST "repos/${REPO}/pages" \
-              -H "Accept: application/vnd.github+json" \
-              -f build_type=legacy \
-              -f "source[branch]=main" \
-              -f "source[path]=/"
-          fi
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
